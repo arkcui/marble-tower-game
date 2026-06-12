@@ -23,6 +23,7 @@ const SHOOT_Y = H - 42;
 const BALL_R = 5;
 const MAX_SPEED = 8.9;
 const COUNTDOWN_MS = 3000;
+const AudioContextClass = window.AudioContext || window.webkitAudioContext;
 
 const state = {
   mode: "menu",
@@ -41,6 +42,9 @@ const state = {
   comboCount: 0,
   comboUntil: 0,
   lastHitBrick: null,
+  screenShake: 0,
+  audioCtx: null,
+  lastFeedbackAt: 0,
 };
 
 function updateHud() {
@@ -62,6 +66,12 @@ function showOverlay(kicker, title, copy, primary, action, secondary = "看广�
 
 function hideOverlay() {
   overlay.classList.remove("is-visible");
+}
+
+function primeAudioFeedback() {
+  if (!AudioContextClass) return;
+  if (!state.audioCtx) state.audioCtx = new AudioContextClass();
+  if (state.audioCtx.state === "suspended") state.audioCtx.resume();
 }
 
 function rand(min, max) {
@@ -134,6 +144,7 @@ function enterCountdown() {
 }
 
 function startRun() {
+  primeAudioFeedback();
   if (state.plays <= 0) {
     showOverlay("局数不足", "看广告续局", "每次挑战消耗 1 局。看完激励广告即可继续爬塔。", "看广告 +1 局", grantPlay);
     return;
@@ -151,12 +162,14 @@ function resetRun() {
 }
 
 function grantPlay() {
+  primeAudioFeedback();
   state.plays += 1;
   updateHud();
   showOverlay("奖励到账", "获得 1 局", "看广告换一次挑战机会，失败复活同样走激励广告。", "开始挑战", startRun);
 }
 
 function revive() {
+  primeAudioFeedback();
   state.bricks.forEach((brick) => {
     brick.y = Math.max(TOP, brick.y - ROW_H * 2);
   });
@@ -199,6 +212,7 @@ function pointerPos(event) {
 
 function beginAim(event) {
   if (state.mode !== "playing") return;
+  primeAudioFeedback();
   const pos = pointerPos(event);
   state.aim.active = true;
   state.aim.x = Math.max(18, Math.min(W - 18, pos.x));
@@ -255,8 +269,37 @@ function rectCircleHit(ball, brick) {
   return dx * dx + dy * dy < BALL_R * BALL_R;
 }
 
+function playFallbackClick(now) {
+  if (!state.audioCtx || now - state.lastFeedbackAt < 28) return;
+  state.lastFeedbackAt = now;
+
+  const osc = state.audioCtx.createOscillator();
+  const gain = state.audioCtx.createGain();
+  osc.type = "triangle";
+  osc.frequency.setValueAtTime(86, state.audioCtx.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(44, state.audioCtx.currentTime + 0.035);
+  gain.gain.setValueAtTime(0.035, state.audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, state.audioCtx.currentTime + 0.04);
+  osc.connect(gain);
+  gain.connect(state.audioCtx.destination);
+  osc.start();
+  osc.stop(state.audioCtx.currentTime + 0.045);
+}
+
 function buzz() {
-  if (navigator.vibrate) navigator.vibrate(12);
+  const now = performance.now();
+  state.screenShake = Math.min(5, state.screenShake + 1.7);
+
+  let vibrated = false;
+  const vibrate = globalThis.navigator && globalThis.navigator.vibrate;
+  if (vibrate) {
+    try {
+      vibrated = vibrate.call(globalThis.navigator, 12);
+    } catch {
+      vibrated = false;
+    }
+  }
+  if (!vibrated) playFallbackClick(now);
 }
 
 function addFloatText(text, x, y, color = "#ffd65a") {
@@ -375,6 +418,9 @@ function update() {
     t.y += t.vy;
   });
   state.floatTexts = state.floatTexts.filter((t) => t.life > 0);
+
+  state.screenShake *= 0.72;
+  if (state.screenShake < 0.05) state.screenShake = 0;
 }
 
 function drawBackground() {
@@ -513,12 +559,18 @@ function drawCountdown() {
 }
 
 function render() {
+  const shake = state.screenShake;
+  const shakeX = shake ? rand(-shake, shake) : 0;
+  const shakeY = shake ? rand(-shake, shake) : 0;
+  ctx.save();
+  ctx.translate(shakeX, shakeY);
   drawBackground();
   drawBricks();
   drawBalls();
   drawParticles();
   drawFloatTexts();
   drawAim();
+  ctx.restore();
   drawCountdown();
   requestAnimationFrame(loop);
 }
