@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>弹珠爬塔</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="hud" aria-label="游戏状态">
+        <div>
+          <span class="label">关卡</span>
+          <strong id="levelText">1</strong>
+        </div>
+        <div>
+          <span class="label">连胜</span>
+          <strong id="streakText">0</strong>
+        </div>
+        <div>
+          <span class="label">可玩局数</span>
+          <strong id="playsText">3</strong>
+        </div>
+      </section>
+
+      <section class="game-wrap">
+        <canvas id="game" width="420" height="700" aria-label="弹珠爬塔游戏画布"></canvas>
+        <div id="overlay" class="overlay is-visible">
+          <div class="panel">
+            <p id="overlayKicker" class="kicker">简单物理碰撞</p>
+            <h1 id="overlayTitle">弹珠爬塔</h1>
+            <p id="overlayCopy">
+              拖动顶部瞄准，松手发射满屏弹珠。清空数字方块即可爬到下一关。
+            </p>
+            <div class="actions">
+              <button id="primaryBtn" type="button">开始挑战</button>
+              <button id="adPlayBtn" type="button" class="ghost">看广告 +1 局</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="controls" aria-label="操作提示">
+        <div class="tip">
+          <span>拖动顶部区域</span>
+          <strong>瞄准</strong>
+        </div>
+        <div class="tip">
+          <span>松手</span>
+          <strong>齐射</strong>
+        </div>
+        <div class="tip">
+          <span>红线触底</span>
+          <strong>失败</strong>
+        </div>
+      </section>
+    </main>
+    <script src="game.js"></script>
+  </body>
+</html>
